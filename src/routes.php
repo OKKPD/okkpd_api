@@ -588,7 +588,7 @@ return function (App $app) {
                         $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => "Profil berhasil diubah",'DATA'=>null);
                     }else{
                         $respCode = 404;
-                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Gagal merubah data profil','DATA'=>null);
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ada data yang diubah','DATA'=>null);
                     }
                 }else{
                     $respCode = 500;
@@ -609,12 +609,10 @@ return function (App $app) {
                     if($user['password'] != $user['password_ulang']){
                         return $response->withJson(array('STATUS' => 'FAILED', 'MESSAGE' => 'Password yang diulang tidak sama','DATA'=>null),400);
                     }
-                    $sql = "UPDATE user set nama_lengkap = :nama, foto_profil = :foto , password = :password
+                    $sql = "UPDATE user set password = :password
                     WHERE id_user = :id_user";
                     $data = [
                         ":id_user" => $id_user,
-                        ":nama" => $user["nama_lengkap"],
-                        ":foto" => $user["foto"],
                         ":password" => sha1('Okkpd2018!'.$user['password'])
                     ];
                 }
