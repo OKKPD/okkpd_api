@@ -542,7 +542,9 @@ return function (App $app) {
             $app->get('/{id_user}', function (Request $request, Response $response, array $args) use ($userContainer) {
                 $id_user = $args["id_user"];
 
-                $sql = "SELECT username, nama_lengkap,alamat_lengkap,kode_role,id_user FROM user WHERE id_user = :id_user";
+                $sql = "SELECT a.username, a.nama_lengkap,a.alamat_lengkap,a.alamat_lengkap,a.kode_kota,a.kode_role,a.id_user,b.id_identitas_usaha,b.nama_pemohon,b.jabatan_pemohon,b.no_ktp_pemohon,b.nama_usaha,b.no_hp_pemohon,b.alamat_usaha,b.jenis_usaha FROM user a
+                    join identitas_usaha b on a.id_user = b.id_user
+                    WHERE a.id_user = :id_user";
                 $stmt = $this->db->prepare($sql);
     
                 $data = [
