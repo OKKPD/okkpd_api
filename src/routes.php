@@ -451,7 +451,7 @@ return function (App $app) {
             $username = $user['username'];
             $role = $user['role'];
            
-            $sql = "SELECT a.username, a.nama_lengkap,a.alamat_lengkap,a.kode_kota,a.kode_role,a.id_user,b.id_identitas_usaha FROM user a
+            $sql = "SELECT a.username, a.nama_lengkap,a.alamat_lengkap,a.alamat_lengkap,a.kode_kota,a.kode_role,a.id_user,b.id_identitas_usaha,b.nama_pemohon,b.jabatan_pemohon,b.no_ktp_pemohon,b.nama_usaha,b.no_hp_pemohon,b.alamat_usaha,b.jenis_usaha FROM user a
                     join identitas_usaha b on a.id_user = b.id_user
                     WHERE a.username =:username AND a.password=:password and a.kode_role =:role";
             $stmt = $this->db->prepare($sql);
