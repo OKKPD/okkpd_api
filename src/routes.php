@@ -58,6 +58,27 @@ return function (App $app) {
 
         $app->group('/komoditas', function () use ($app) {
             $komoditasContainer = $app->getContainer();
+            $app->get('/allKomoditas', function (Request $request, Response $response, array $args) use ($komoditasContainer) {
+                $sql = "SELECT id_kelompok,nama_kelompok,komoditas_kelompok.id_sektor,nama_sektor_komoditas FROM `komoditas_kelompok` 
+                        join komoditas_sektor on komoditas_kelompok.id_sektor = komoditas_sektor.id_sektor";
+                $stmt = $this->db->prepare($sql);
+                $respCode = 200;
+                if($stmt->execute()){
+                    if ($stmt->rowCount() > 0) {
+                        $data = $stmt->fetchAll();
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => null,'DATA'=>$data);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Data tidak ditemukan','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+    
+                $newResponse = $response->withJson($result,$respCode);
+                return $newResponse;
+            });
             $app->get('/sektor', function (Request $request, Response $response, array $args) use ($komoditasContainer) {
                 $sql = "SELECT id_sektor, nama_sektor_komoditas FROM `komoditas_sektor`";
                 $stmt = $this->db->prepare($sql);
