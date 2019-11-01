@@ -56,6 +56,32 @@ return function (App $app) {
     $app->group('/api/v1', function () use ($app) {
         $container = $app->getContainer();
 
+        $app->group('/berita', function () use ($app) {
+            $beritaContainer = $app->getContainer();
+            $app->get('/prev', function (Request $request, Response $response, array $args) use ($beritaContainer) {
+                $sql = "SELECT id_berita,slug,judul_berita,concat(SUBSTRING(isi_berita,1,120),'...') preview_berita,
+                    gambar,tanggal_buat FROM berita order by tanggal_buat desc limit 5";
+                $stmt = $this->db->prepare($sql);
+                $respCode = 200;
+                if($stmt->execute()){
+                    if ($stmt->rowCount() > 0) {
+                        $data = $stmt->fetchAll();
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => null,'DATA'=>$data);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ditemukan berita','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+                return $response->withJson($result,$respCode);  
+            });
+        });
+
+
+        
+
         $app->group('/komoditas', function () use ($app) {
             $komoditasContainer = $app->getContainer();
             $app->get('/allKomoditas', function (Request $request, Response $response, array $args) use ($komoditasContainer) {
@@ -156,6 +182,178 @@ return function (App $app) {
 
         $app->group('/layanan', function () use ($app) {
             $layananContainer = $app->getContainer();
+            $app->get('/{id_usaha}/list', function (Request $request, Response $response, array $args) use ($layananContainer) {
+                $id_usaha = $args["id_usaha"];
+
+                $param = $request->getQueryParams();
+                if(!isset($param['layanan']) || !isset($param['status'])){
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Parameter harus dilengkapi','DATA'=>null);
+                    return $response->withJson($result,411);
+                }
+                $sql = "SELECT layanan.uid, layanan.kode_layanan,master_layanan.nama_layanan,layanan.id_identitas_usaha,layanan.kode_pendaftaran,layanan.status,layanan.level,layanan.tanggal_buat 
+                    from layanan join master_layanan on layanan.kode_layanan = master_layanan.kode_layanan
+                    where layanan.id_identitas_usaha = :id_usaha
+                    and layanan.status = :status
+                    and layanan.kode_layanan like :layanan
+                    order by layanan.tanggal_buat asc
+                    ";
+                $stmt = $this->db->prepare($sql);
+                $data = [
+                    ":id_usaha" => $id_usaha,
+                    ":status" => $param['status'],
+                    ":layanan" => $param['layanan'],
+                ];
+                $respCode = 200;
+
+                if($stmt->execute($data)){
+                    if ($stmt->rowCount() > 0) {
+                        $data = $stmt->fetchAll();
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => null,'DATA'=>$data);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ditemukan data','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+                return $response->withJson($result,$respCode);
+            });
+            
+            $app->get('/{id_usaha}/dokumen/{id_layanan}/{jenis}', function (Request $request, Response $response, array $args) use ($layananContainer) {
+
+                $id_usaha = $args["id_usaha"];
+                $id_layanan = $args["id_layanan"];
+                $jenis = $args["jenis"];
+
+                $isSuccess = true;
+                $respCode = 200;
+
+                $sqlDok = "";
+
+                if($jenis == 'header'){
+                    $sqlDok = "SELECT layanan.kode_layanan,master_dokumen.kode_dokumen,master_dokumen.nama_dokumen from layanan join detail_dokumen dokumen
+                    on layanan.kode_layanan = dokumen.kode_layanan
+                    join master_dokumen
+                    on dokumen.kode_dokumen = master_dokumen.kode_dokumen
+                    where layanan.uid = '12'
+                    ";
+                }else if($jenis == 'detail'){
+                    $sqlDok = "SELECT layanan.kode_layanan,master_dokumen.kode_dokumen,media.id_media,media.nama_media 
+                    from layanan join detail_dokumen dokumen
+                    on layanan.kode_layanan = dokumen.kode_layanan
+                    join identitas_usaha_media media
+                    on dokumen.kode_dokumen = media.kode_dokumen
+                    join master_dokumen
+                    on dokumen.kode_dokumen = master_dokumen.kode_dokumen
+                    where layanan.uid = :layanan
+                    and COALESCE(media.visible,1) = 1";
+                }else{
+                    return $response->withJson(array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ditemukan data','DATA'=>null),404);
+                }
+                            
+                $stmtDok = $this->db->prepare($sqlDok);
+                $dataDok = [
+                    ":layanan" => $id_layanan
+                ];
+
+                if($stmtDok->execute($dataDok)){
+                    if ($stmtDok->rowCount() > 0) {
+                        $data = $stmtDok->fetchAll();
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => null,'DATA'=>$data);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ditemukan berita','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+
+
+                $dir = getDir($this->db,$id_user);
+                $ftp = $this->ftp;
+
+                $newResponse = $response->withJson($result,$respCode);
+                return $newResponse;
+
+            });
+
+            $app->post('/{id_usaha}/unggah_media', function (Request $request, Response $response, array $args) use ($layananContainer) {
+                $dokumen = $request->getParsedBody();
+                $id_usaha = $args["id_usaha"];
+
+                $isSuccess = true;
+                $respCode = 200;
+
+                $kode_dokumen = $dokumen['kode_dokumen'];
+                $id_user = $dokumen['id_user'];
+
+                $dir = getDir($this->db,$id_user);
+
+                $ftp = $this->ftp;
+                $ftp_conn = ftp_connect($ftp['host']) or die("Could not connect to ".$ftp['host']);
+                $login = ftp_login($ftp_conn, $ftp['user'], $ftp['pass']); 
+                $uploadedFiles = $request->getUploadedFiles();
+                $uploadedFile = $uploadedFiles['gambar'];
+
+                if ($uploadedFile->getError() === UPLOAD_ERR_OK) {
+                    
+                    $fileName = $uploadedFile->getClientFilename();  
+                    $uploadedFile->moveTo($ftp['temp_loc'].$fileName);
+                    $file_list = ftp_nlist($ftp_conn, ".");
+                    $isExist = false;
+                    var_dump($file_list);
+                    foreach($file_list as $file_list){
+                        if($file_list == $dir){
+                            $isExist = true;
+                        }
+                    }
+                    if($isExist == false){
+                        if (ftp_mkdir($ftp_conn, $dir)){
+
+                        }
+                    }
+
+                    if (ftp_put($ftp_conn, $dir.'/'.$fileName, $ftp['temp_loc'].$fileName, FTP_BINARY)){
+                        $sqlIns = "INSERT INTO identitas_usaha_media (id_media, id_identitas_usaha,nama_media,mime_type,kode_dokumen) 
+                                    VALUES (:id_media,:id_identitas_usaha,:nama_media, :mime_type,:kode_dokumen)";
+                                    
+                        $stmtIns = $this->db->prepare($sqlIns);
+                        $dataIns = [
+                            ":id_media" => null,
+                            ":id_identitas_usaha" => $id_usaha,
+                            ":nama_media" => $fileName,
+                            ":mime_type" => null,
+                            ":kode_dokumen" => $kode_dokumen
+                        ];
+                        if($stmtIns->execute($dataIns)){
+                            $last_id = $this->db->lastInsertId();
+                        }else{
+                            $isSuccess = false;
+                            $respCode = 500;
+                        }
+                    }
+                    else{
+                        return $response->withJson(array('STATUS' => 'FAILED', 'MESSAGE' => 'Dokumen belum lengkap','DATA'=>null),$respCode);
+
+                    }
+                    unlink($ftp['temp_loc'].$fileName);
+                    $i++;   
+                }
+                ftp_close($ftp_conn);
+                if ($isSuccess) {
+                     $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => 'Dokumen berhasil disimpan','DATA'=>null);
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Gagal menyimpan dokumen','DATA'=>null);
+                }
+
+                $newResponse = $response->withJson($result,$respCode);
+                return $newResponse;
+
+            });
+
             $app->post('/{id_usaha}/unggah_dokumen/{id_layanan}', function (Request $request, Response $response, array $args) use ($layananContainer) {
                 $dokumen = $request->getParsedBody();
                 $id_layanan = $args["id_layanan"];

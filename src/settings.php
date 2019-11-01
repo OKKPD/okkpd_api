@@ -26,7 +26,8 @@ return [
             'host' => 'yogaadi.xyz',
             'user' => 'okkpd_upload_api@yogaadi.xyz',
             'pass' => 'OkkpdApi2019!',
-            'temp_loc' => '../public/upload/'
+            'temp_loc' => '../public/upload/',
+            'location' => 'http://yogaadi.xyz/okkpd/upload/Dokumen_Usaha/'
         ]
     ],
 ];
