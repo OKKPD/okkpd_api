@@ -194,7 +194,7 @@ return function (App $app) {
                     from layanan join master_layanan on layanan.kode_layanan = master_layanan.kode_layanan
                     where layanan.id_identitas_usaha = :id_usaha
                     and layanan.status = :status
-                    and layanan.kode_layanan like :layanan
+                    and layanan.kode_layanan like :layanankodeLayanan
                     order by layanan.tanggal_buat asc
                     ";
                 $stmt = $this->db->prepare($sql);
@@ -350,6 +350,67 @@ return function (App $app) {
 
                 $newResponse = $response->withJson($result,$respCode);
                 return $newResponse;
+
+            });
+            $app->post('/{id_usaha}/simpan_dokumen', function (Request $request, Response $response, array $args) use ($layananContainer) {
+                $dokumen = $request->getParsedBody();
+                $id_layanan = $dokumen["id_layanan"];
+                $id_usaha = $args["id_usaha"];
+
+                $sql = "SELECT distinct a.nama_usaha,b.nama_lengkap,b.kode_kota,b.id_user 
+                        FROM `identitas_usaha` a join user b on a.id_user = b.id_user 
+                        where a.id_identitas_usaha = :id_usaha";
+                $stmt = $this->db->prepare($sql);
+    
+                $data = [
+                    ":id_usaha" => $id_usaha
+                ];
+
+                $nama_usaha = 'XXX';
+                $dir = "";
+                if($stmt->execute($data)){
+                    if ($stmt->rowCount() > 0) {
+                        $data = $stmt->fetch();
+                        $dir = strtoupper(explode(" ", $data['nama_lengkap'])[0]).preg_replace('/\./', '', $data['kode_kota']).sprintf('%04d', 01);
+                        $nama_usaha = str_replace(" ","X",$data['nama_usaha']);
+                    }else{
+
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+                
+				$arr_nama_usaha = str_split($nama_usaha);
+				$jml_arr = sizeof($arr_nama_usaha);
+				$kode= '';
+				for ($i=0; $i < 3; $i++) {
+					$kode.=$arr_nama_usaha[rand(0,$jml_arr-1)];
+				}
+				$timestamp = time();
+                $kode =  strtoupper($kode).date('Ymd').substr($timestamp,7,3);
+
+                $sqlUpdate = "UPDATE layanan SET syarat_teknis = :syarat_teknis, kode_pendaftaran = :kode_pendaftaran 
+                            WHERE uid = :id_layanan";
+                $stmtUpdate = $this->db->prepare($sqlUpdate);
+                $dataUpdate = [":syarat_teknis" => "-",":kode_pendaftaran" => $kode, ":id_layanan"=>$id_layanan];
+
+                $respCode = 200;
+                if($stmtUpdate->execute($dataUpdate)){
+                    if ($stmt->rowCount() > 0) {
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => 'Dokumen berhasil disimpan','DATA'=>null);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Data tidak ditemukan','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+                
+                $newResponse = $response->withJson($result,$respCode);
+                return $newResponse;
+
 
             });
 
