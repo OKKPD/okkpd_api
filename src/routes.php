@@ -303,7 +303,6 @@ return function (App $app) {
                     $uploadedFile->moveTo($ftp['temp_loc'].$fileName);
                     $file_list = ftp_nlist($ftp_conn, ".");
                     $isExist = false;
-                    var_dump($file_list);
                     foreach($file_list as $file_list){
                         if($file_list == $dir){
                             $isExist = true;
