@@ -204,7 +204,6 @@ return function (App $app) {
                     ":status" => $param['status'],
                     ":layanan" => $param['layanan'],
                 ];
-                var_dump($data);
                 $respCode = 200;
 
                 if($stmt->execute($data)){
