@@ -182,6 +182,7 @@ return function (App $app) {
 
         $app->group('/layanan', function () use ($app) {
             $layananContainer = $app->getContainer();
+
             $app->get('/{id_usaha}/list', function (Request $request, Response $response, array $args) use ($layananContainer) {
                 $id_usaha = $args["id_usaha"];
 
@@ -194,7 +195,7 @@ return function (App $app) {
                     from layanan join master_layanan on layanan.kode_layanan = master_layanan.kode_layanan
                     where layanan.id_identitas_usaha = :id_usaha
                     and layanan.status = :status
-                    and layanan.kode_layanan like :layanankodeLayanan
+                    and layanan.kode_layanan like :layanan
                     order by layanan.tanggal_buat asc
                     ";
                 $stmt = $this->db->prepare($sql);
@@ -203,6 +204,7 @@ return function (App $app) {
                     ":status" => $param['status'],
                     ":layanan" => $param['layanan'],
                 ];
+                var_dump($data);
                 $respCode = 200;
 
                 if($stmt->execute($data)){
