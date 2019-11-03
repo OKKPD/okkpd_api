@@ -58,6 +58,27 @@ return function (App $app) {
 
         $app->group('/berita', function () use ($app) {
             $beritaContainer = $app->getContainer();
+
+            $app->get('/all', function (Request $request, Response $response, array $args) use ($beritaContainer) {
+                $sql = "SELECT id_berita,slug,judul_berita,concat(SUBSTRING(isi_berita,1,120),'...') preview_berita,
+                    gambar,tanggal_buat FROM berita order by tanggal_buat desc";
+                $stmt = $this->db->prepare($sql);
+                $respCode = 200;
+                if($stmt->execute()){
+                    if ($stmt->rowCount() > 0) {
+                        $data = $stmt->fetchAll();
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => null,'DATA'=>$data);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ditemukan berita','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+                return $response->withJson($result,$respCode);  
+            });
+
             $app->get('/prev', function (Request $request, Response $response, array $args) use ($beritaContainer) {
                 $sql = "SELECT id_berita,slug,judul_berita,concat(SUBSTRING(isi_berita,1,120),'...') preview_berita,
                     gambar,tanggal_buat FROM berita order by tanggal_buat desc limit 5";
@@ -77,6 +98,31 @@ return function (App $app) {
                 }
                 return $response->withJson($result,$respCode);  
             });
+
+            $app->get('/view/{id_berita}', function (Request $request, Response $response, array $args) use ($beritaContainer) {
+                $id_berita = $args["id_berita"];
+
+                $sql = "SELECT id_berita,slug,judul_berita,isi_berita,
+                    gambar,tanggal_buat FROM berita where id_berita = :id_berita";
+                $stmt = $this->db->prepare($sql);
+                $data = [":id_berita" => $id_berita];
+
+                $respCode = 200;
+                if($stmt->execute($data)){
+                    if ($stmt->rowCount() > 0) {
+                        $data = $stmt->fetch();
+                        $result = array('STATUS' => 'SUCCESS', 'MESSAGE' => null,'DATA'=>$data);
+                    }else{
+                        $respCode = 404;
+                        $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Tidak ditemukan berita','DATA'=>null);
+                    }
+                }else{
+                    $respCode = 500;
+                    $result = array('STATUS' => 'FAILED', 'MESSAGE' => 'Error executing query','DATA'=>null);
+                }
+                return $response->withJson($result,$respCode);  
+            });
+
         });
 
 
